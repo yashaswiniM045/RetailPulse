@@ -6,7 +6,10 @@ import Register from "../pages/auth/Register";
 import ForgotPassword from "../pages/auth/ForgotPassword";
 import DashboardHome from "../pages/dashboard/DashboardHome";
 import ProfilePage from "../pages/profile/ProfilePage";
+import CategoriesPage from "../pages/categories/CategoriesPage";
+import ProductsPage from "../pages/products/ProductsPage";
 import ProtectedRoute from "./ProtectedRoute";
+import RoleRoute from "./RoleRoute";
 
 export default function AppRoutes() {
 	return (
@@ -22,6 +25,10 @@ export default function AppRoutes() {
 				<Route element={<DashboardLayout />}>
 					<Route path="/dashboard" element={<DashboardHome />} />
 					<Route path="/profile" element={<ProfilePage />} />
+					<Route element={<RoleRoute allowedRoles={["Company Admin", "Super Admin"]} />}>
+						<Route path="/categories" element={<CategoriesPage />} />
+						<Route path="/products" element={<ProductsPage />} />
+					</Route>
 				</Route>
 			</Route>
 		</Routes>

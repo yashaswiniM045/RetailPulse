@@ -70,6 +70,9 @@ def register_company(db: Session, payload: CompanyRegistration, request: Request
         db,
         company_id=company.id,
         user_id=admin_user.id,
+        performed_by=admin_user.name,
+        entity_type="Company",
+        entity_name=company.name,
         action=AuditAction.COMPANY_REGISTERED,
         request=request,
     )
@@ -85,7 +88,16 @@ def login_user(db: Session, payload: LoginRequest, request: Request) -> AuthResp
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is not active")
 
     user.last_login = datetime.now(UTC)
-    create_audit_log(db, company_id=user.company_id, user_id=user.id, action=AuditAction.USER_LOGIN, request=request)
+    create_audit_log(
+        db,
+        company_id=user.company_id,
+        user_id=user.id,
+        performed_by=user.name,
+        entity_type="User",
+        entity_name=user.name,
+        action=AuditAction.USER_LOGIN,
+        request=request,
+    )
     db.commit()
     return _build_auth_response(db, user)
 
@@ -114,7 +126,16 @@ def logout_user(db: Session, user: User, refresh_token: str, request: Request) -
     )
     if persisted_token is not None:
         db.delete(persisted_token)
-    create_audit_log(db, company_id=user.company_id, user_id=user.id, action=AuditAction.USER_LOGOUT, request=request)
+    create_audit_log(
+        db,
+        company_id=user.company_id,
+        user_id=user.id,
+        performed_by=user.name,
+        entity_type="User",
+        entity_name=user.name,
+        action=AuditAction.USER_LOGOUT,
+        request=request,
+    )
     db.commit()
 
 
@@ -125,5 +146,14 @@ def change_password(db: Session, user: User, current_password: str, new_password
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must be at least 8 characters")
 
     user.password = hash_password(new_password)
-    create_audit_log(db, company_id=user.company_id, user_id=user.id, action=AuditAction.PASSWORD_CHANGED, request=request)
+    create_audit_log(
+        db,
+        company_id=user.company_id,
+        user_id=user.id,
+        performed_by=user.name,
+        entity_type="User",
+        entity_name=user.name,
+        action=AuditAction.PASSWORD_CHANGED,
+        request=request,
+    )
     db.commit()

@@ -1,14 +1,18 @@
 import { Card, CardContent, Grid, Stack, Typography } from "@mui/material";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../context/AuthContext";
-
-const metricCards = [
-  { label: "Active Analysts", value: "12" },
-  { label: "Open Reports", value: "28" },
-  { label: "Data Refresh", value: "2 min" },
-];
+import { getDashboardSummary } from "../../api/catalogApi";
 
 export default function DashboardHome() {
   const { user } = useAuth();
+  const { data: summary } = useQuery({ queryKey: ["dashboard-summary"], queryFn: getDashboardSummary });
+
+  const metricCards = [
+    { label: "Total Products", value: summary?.totalProducts ?? 0 },
+    { label: "Active Products", value: summary?.activeProducts ?? 0 },
+    { label: "Inactive Products", value: summary?.inactiveProducts ?? 0 },
+    { label: "Total Categories", value: summary?.totalCategories ?? 0 },
+  ];
 
   return (
     <Stack spacing={3}>
@@ -22,7 +26,7 @@ export default function DashboardHome() {
       </div>
       <Grid container spacing={2}>
         {metricCards.map((metric) => (
-          <Grid key={metric.label} size={{ xs: 12, md: 4 }}>
+          <Grid key={metric.label} size={{ xs: 12, md: 6, lg: 3 }}>
             <Card>
               <CardContent>
                 <Typography color="text.secondary" gutterBottom>

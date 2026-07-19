@@ -5,15 +5,16 @@ import { useState } from "react";
 import { Link as RouterLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const navigationItems = [
-	{ label: "Dashboard", to: "/dashboard" },
-	{ label: "Profile", to: "/profile" },
-];
-
 export default function DashboardLayout() {
 	const [open, setOpen] = useState(false);
 	const location = useLocation();
 	const { logoutUser, user } = useAuth();
+	const isAdmin = user?.role === "Company Admin" || user?.role === "Super Admin";
+	const navigationItems = [
+		{ label: "Dashboard", to: "/dashboard" },
+		{ label: "Profile", to: "/profile" },
+		...(isAdmin ? [{ label: "Categories", to: "/categories" }, { label: "Products", to: "/products" }] : []),
+	];
 
 	return (
 		<Box minHeight="100vh" sx={{ bgcolor: "background.default" }}>
