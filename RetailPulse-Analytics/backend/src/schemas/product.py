@@ -41,6 +41,7 @@ class ProductRead(BaseModel):
     unit_price: float = Field(alias="unitPrice")
     cost_price: float = Field(alias="costPrice")
     stock_quantity: int = Field(alias="stockQuantity")
+    is_out_of_stock: bool = Field(alias="isOutOfStock")
     unit_of_measure: str = Field(alias="unitOfMeasure")
     status: str
     created_at: datetime = Field(alias="createdAt")

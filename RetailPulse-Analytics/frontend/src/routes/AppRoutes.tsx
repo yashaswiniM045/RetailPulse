@@ -8,6 +8,7 @@ import DashboardHome from "../pages/dashboard/DashboardHome";
 import ProfilePage from "../pages/profile/ProfilePage";
 import CategoriesPage from "../pages/categories/CategoriesPage";
 import ProductsPage from "../pages/products/ProductsPage";
+import SalesPage from "../pages/sales/SalesPage";
 import ProtectedRoute from "./ProtectedRoute";
 import RoleRoute from "./RoleRoute";
 
@@ -25,6 +26,9 @@ export default function AppRoutes() {
 				<Route element={<DashboardLayout />}>
 					<Route path="/dashboard" element={<DashboardHome />} />
 					<Route path="/profile" element={<ProfilePage />} />
+					<Route element={<RoleRoute allowedRoles={["Company Admin", "Super Admin", "Analyst"]} />}>
+						<Route path="/sales" element={<SalesPage />} />
+					</Route>
 					<Route element={<RoleRoute allowedRoles={["Company Admin", "Super Admin"]} />}>
 						<Route path="/categories" element={<CategoriesPage />} />
 						<Route path="/products" element={<ProductsPage />} />

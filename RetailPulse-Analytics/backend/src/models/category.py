@@ -28,3 +28,4 @@ class Category(Base):
 
     company = relationship("Company", back_populates="categories")
     products = relationship("Product", back_populates="category", cascade="all, delete-orphan")
+    sale_items = relationship("SaleItem", back_populates="category")

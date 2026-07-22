@@ -24,6 +24,7 @@ def _product_payload(product: Product) -> dict:
         "unitPrice": float(product.unit_price),
         "costPrice": float(product.cost_price),
         "stockQuantity": product.stock_quantity,
+        "isOutOfStock": product.is_out_of_stock,
         "unitOfMeasure": product.unit_of_measure,
         "status": product.status.value if hasattr(product.status, "value") else product.status,
         "createdAt": product.created_at,
@@ -131,6 +132,7 @@ def create_product(db: Session, current_user: User, payload: ProductUpsert, requ
         unit_price=payload.unit_price,
         cost_price=payload.cost_price,
         stock_quantity=payload.stock_quantity,
+        is_out_of_stock=payload.stock_quantity == 0,
         unit_of_measure=payload.unit_of_measure.strip(),
         status=ProductStatus(payload.status),
     )
@@ -171,6 +173,7 @@ def update_product(db: Session, current_user: User, product_id: int, payload: Pr
     product.unit_price = payload.unit_price
     product.cost_price = payload.cost_price
     product.stock_quantity = payload.stock_quantity
+    product.is_out_of_stock = payload.stock_quantity == 0
     product.unit_of_measure = payload.unit_of_measure.strip()
     product.status = ProductStatus(payload.status)
 

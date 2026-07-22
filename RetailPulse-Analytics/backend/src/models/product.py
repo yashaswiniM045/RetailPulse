@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Numeric, String, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -29,6 +29,7 @@ class Product(Base):
     unit_price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     cost_price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     stock_quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_out_of_stock: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     unit_of_measure: Mapped[str] = mapped_column(String(50), nullable=False)
     status: Mapped[ProductStatus] = mapped_column(Enum(ProductStatus), default=ProductStatus.ACTIVE, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -38,3 +39,4 @@ class Product(Base):
 
     company = relationship("Company", back_populates="products")
     category = relationship("Category", back_populates="products")
+    sale_items = relationship("SaleItem", back_populates="product")

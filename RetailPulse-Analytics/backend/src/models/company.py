@@ -16,5 +16,6 @@ class Company(Base, TimestampMixin):
 
     categories = relationship("Category", back_populates="company", cascade="all, delete-orphan")
     products = relationship("Product", back_populates="company", cascade="all, delete-orphan")
+    sales = relationship("Sale", back_populates="company", cascade="all, delete-orphan")
     users = relationship("User", back_populates="company", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="company")

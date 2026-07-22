@@ -17,6 +17,11 @@ class AuditAction:
     PRODUCT_DELETED = "Product Deleted"
     PRODUCT_ACTIVATED = "Product Activated"
     PRODUCT_DEACTIVATED = "Product Deactivated"
+    SALE_CREATED = "Sale Created"
+    SALE_UPDATED = "Sale Updated"
+    SALE_DELETED = "Sale Deleted"
+    INVENTORY_UPDATED = "Inventory Updated"
+    PRODUCT_MARKED_OUT_OF_STOCK = "Product Marked Out of Stock"
 
 
 def create_audit_log(

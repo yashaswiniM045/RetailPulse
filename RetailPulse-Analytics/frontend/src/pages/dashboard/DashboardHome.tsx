@@ -12,6 +12,10 @@ export default function DashboardHome() {
     { label: "Active Products", value: summary?.activeProducts ?? 0 },
     { label: "Inactive Products", value: summary?.inactiveProducts ?? 0 },
     { label: "Total Categories", value: summary?.totalCategories ?? 0 },
+    { label: "Total Sales", value: summary?.totalSales ?? 0 },
+    { label: "Total Revenue", value: (summary?.totalRevenue ?? 0).toFixed(2) },
+    { label: "Total Orders", value: summary?.totalOrders ?? 0 },
+    { label: "Average Order Value", value: (summary?.averageOrderValue ?? 0).toFixed(2) },
   ];
 
   return (

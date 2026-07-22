@@ -10,9 +10,11 @@ export default function DashboardLayout() {
 	const location = useLocation();
 	const { logoutUser, user } = useAuth();
 	const isAdmin = user?.role === "Company Admin" || user?.role === "Super Admin";
+	const canUseSales = isAdmin || user?.role === "Analyst";
 	const navigationItems = [
 		{ label: "Dashboard", to: "/dashboard" },
 		{ label: "Profile", to: "/profile" },
+		...(canUseSales ? [{ label: "Sales", to: "/sales" }] : []),
 		...(isAdmin ? [{ label: "Categories", to: "/categories" }, { label: "Products", to: "/products" }] : []),
 	];
 
