@@ -34,3 +34,5 @@ class User(Base, TimestampMixin):
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
     sales_created = relationship("Sale", back_populates="creator")
     audit_logs = relationship("AuditLog", back_populates="user")
+    inventory_movements = relationship("InventoryMovement", back_populates="user")
+    inventory_notifications_created = relationship("InventoryNotification", back_populates="creator")

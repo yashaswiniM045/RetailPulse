@@ -14,6 +14,7 @@ export default function DashboardLayout() {
 	const navigationItems = [
 		{ label: "Dashboard", to: "/dashboard" },
 		{ label: "Profile", to: "/profile" },
+		...(canUseSales ? [{ label: "Inventory", to: "/inventory" }] : []),
 		...(canUseSales ? [{ label: "Sales", to: "/sales" }] : []),
 		...(isAdmin ? [{ label: "Categories", to: "/categories" }, { label: "Products", to: "/products" }] : []),
 	];

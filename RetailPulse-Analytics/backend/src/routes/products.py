@@ -1,13 +1,13 @@
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.orm import Session
 
 from src.dependencies.auth import require_roles
 from src.dependencies.database import get_db
 from src.models.product import ProductStatus
 from src.models.user import User, UserRole
-from src.schemas.product import ProductRead, ProductStatusUpdate, ProductUpsert
+from src.schemas.product import ProductListRead, ProductRead, ProductStatusUpdate, ProductUpsert
 from src.services.product_service import (
     create_product,
     delete_product,
@@ -20,13 +20,15 @@ from src.services.product_service import (
 router = APIRouter(prefix="/products", tags=["products"])
 
 
-@router.get("", response_model=list[ProductRead])
+@router.get("", response_model=ProductListRead)
 def list_products_route(
     search: str | None = None,
     category_id: int | None = None,
     status: ProductStatus | None = None,
     sort_by: Literal["name", "price", "recentlyAdded"] = "recentlyAdded",
     sort_direction: Literal["asc", "desc"] = "desc",
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100, alias="pageSize"),
     current_user: User = Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN)),
     db: Session = Depends(get_db),
 ):
@@ -38,6 +40,8 @@ def list_products_route(
         status_filter=status,
         sort_by=sort_by,
         sort_direction=sort_direction,
+        page=page,
+        page_size=page_size,
     )
 
 

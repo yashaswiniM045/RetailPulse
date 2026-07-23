@@ -37,13 +37,16 @@ export default function ProductsPage() {
 	const [statusFilter, setStatusFilter] = useState<CatalogStatus | "all">("all");
 	const [sortBy, setSortBy] = useState<"name" | "price" | "recentlyAdded">("recentlyAdded");
 	const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+	const [page, setPage] = useState(1);
+	const [pageSize, setPageSize] = useState(10);
 	const [open, setOpen] = useState(false);
 	const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
 	const [viewingProduct, setViewingProduct] = useState<ProductItem | null>(null);
+	const [pendingDeleteProduct, setPendingDeleteProduct] = useState<ProductItem | null>(null);
 
 	const { data: categories = [] } = useQuery({ queryKey: ["category-options"], queryFn: () => listCategories({}) });
-	const { data: products = [], isLoading } = useQuery({
-		queryKey: ["products", search, categoryFilter, statusFilter, sortBy, sortDirection],
+	const { data: productsPage, isLoading } = useQuery({
+		queryKey: ["products", search, categoryFilter, statusFilter, sortBy, sortDirection, page, pageSize],
 		queryFn: () =>
 			listProducts({
 				search: search || undefined,
@@ -51,8 +54,13 @@ export default function ProductsPage() {
 				status: statusFilter === "all" ? undefined : statusFilter,
 				sortBy,
 				sortDirection,
+				page,
+				pageSize,
 			}),
 	});
+	const products = productsPage?.items ?? [];
+	const totalProducts = productsPage?.total ?? 0;
+	const totalPages = productsPage?.totalPages ?? 0;
 
 	const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<ProductFormValues>({ defaultValues: emptyValues });
 	const watchedUnitPrice = watch("unitPrice");
@@ -75,6 +83,10 @@ export default function ProductsPage() {
 			reset(emptyValues);
 		}
 	}, [editingProduct, reset]);
+
+	useEffect(() => {
+		setPage(1);
+	}, [search, categoryFilter, statusFilter, sortBy, sortDirection]);
 
 	const activeProducts = useMemo(() => products.filter((product) => product.status === "active").length, [products]);
 
@@ -137,6 +149,25 @@ export default function ProductsPage() {
 		setEditingProduct(null);
 	};
 
+	const openDeleteDialog = (product: ProductItem) => {
+		setPendingDeleteProduct(product);
+	};
+
+	const closeDeleteDialog = () => {
+		setPendingDeleteProduct(null);
+	};
+
+	const confirmDeleteProduct = () => {
+		if (!pendingDeleteProduct) {
+			return;
+		}
+		deleteMutation.mutate(pendingDeleteProduct.id, {
+			onSuccess: () => {
+				closeDeleteDialog();
+			},
+		});
+	};
+
 	const categoryOptions = categories as CategoryItem[];
 
 	return (
@@ -148,13 +179,13 @@ export default function ProductsPage() {
 
 			<Grid container spacing={2}>
 				<Grid size={{ xs: 12, md: 3 }}>
-					<Paper sx={{ p: 2 }}><Typography color="text.secondary">Total Products</Typography><Typography variant="h4" fontWeight={700}>{products.length}</Typography></Paper>
+					<Paper sx={{ p: 2 }}><Typography color="text.secondary">Total Products</Typography><Typography variant="h4" fontWeight={700}>{totalProducts}</Typography></Paper>
 				</Grid>
 				<Grid size={{ xs: 12, md: 3 }}>
-					<Paper sx={{ p: 2 }}><Typography color="text.secondary">Active Products</Typography><Typography variant="h4" fontWeight={700}>{activeProducts}</Typography></Paper>
+					<Paper sx={{ p: 2 }}><Typography color="text.secondary">Active (Current Page)</Typography><Typography variant="h4" fontWeight={700}>{activeProducts}</Typography></Paper>
 				</Grid>
 				<Grid size={{ xs: 12, md: 3 }}>
-					<Paper sx={{ p: 2 }}><Typography color="text.secondary">Inactive Products</Typography><Typography variant="h4" fontWeight={700}>{products.length - activeProducts}</Typography></Paper>
+					<Paper sx={{ p: 2 }}><Typography color="text.secondary">Inactive (Current Page)</Typography><Typography variant="h4" fontWeight={700}>{Math.max(products.length - activeProducts, 0)}</Typography></Paper>
 				</Grid>
 				<Grid size={{ xs: 12, md: 3 }}>
 					<Paper sx={{ p: 2 }}><Typography color="text.secondary">Categories</Typography><Typography variant="h4" fontWeight={700}>{categoryOptions.length}</Typography></Paper>
@@ -217,7 +248,7 @@ export default function ProductsPage() {
 												<IconButton size="small" onClick={() => statusMutation.mutate({ productId: product.id, status: product.status === "active" ? "inactive" : "active" })}>
 													<Chip size="small" label={product.status === "active" ? "Disable" : "Enable"} />
 												</IconButton>
-												<IconButton size="small" onClick={() => deleteMutation.mutate(product.id)}><DeleteIcon fontSize="small" /></IconButton>
+												<IconButton size="small" onClick={() => openDeleteDialog(product)}><DeleteIcon fontSize="small" /></IconButton>
 											</Stack>
 										</td>
 									</tr>
@@ -225,6 +256,31 @@ export default function ProductsPage() {
 							</tbody>
 						</table>
 					</Box>
+
+					<Stack direction={{ xs: "column", md: "row" }} spacing={2} justifyContent="space-between" alignItems={{ md: "center" }}>
+						<Typography color="text.secondary">
+							Showing {totalProducts === 0 ? 0 : (page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalProducts)} of {totalProducts}
+						</Typography>
+						<Stack direction="row" spacing={1} alignItems="center">
+							<TextField
+								select
+								size="small"
+								label="Rows"
+								value={pageSize}
+								onChange={(event) => {
+									setPageSize(Number(event.target.value));
+									setPage(1);
+								}}
+								sx={{ minWidth: 110 }}
+							>
+								{[10, 25, 50].map((size) => (
+									<MenuItem key={size} value={size}>{size}</MenuItem>
+								))}
+							</TextField>
+							<Button variant="outlined" disabled={page <= 1} onClick={() => setPage((current) => Math.max(current - 1, 1))}>Previous</Button>
+							<Button variant="outlined" disabled={totalPages === 0 || page >= totalPages} onClick={() => setPage((current) => current + 1)}>Next</Button>
+						</Stack>
+					</Stack>
 				</Stack>
 			</Paper>
 
@@ -297,6 +353,19 @@ export default function ProductsPage() {
 				</DialogContent>
 				<DialogActions>
 					<Button onClick={() => setViewingProduct(null)}>Close</Button>
+				</DialogActions>
+			</Dialog>
+
+			<Dialog open={Boolean(pendingDeleteProduct)} onClose={closeDeleteDialog} fullWidth maxWidth="xs">
+				<DialogTitle>Delete Product</DialogTitle>
+				<DialogContent>
+					<Typography>
+						Are you sure you want to delete {pendingDeleteProduct?.name}? This action cannot be undone.
+					</Typography>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={closeDeleteDialog} color="inherit">Cancel</Button>
+					<Button color="error" variant="contained" onClick={confirmDeleteProduct} disabled={deleteMutation.isPending}>Delete</Button>
 				</DialogActions>
 			</Dialog>
 		</Stack>

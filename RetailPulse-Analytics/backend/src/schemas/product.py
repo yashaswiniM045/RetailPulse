@@ -46,3 +46,11 @@ class ProductRead(BaseModel):
     status: str
     created_at: datetime = Field(alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt")
+
+
+class ProductListRead(BaseModel):
+    items: list[ProductRead]
+    total: int
+    page: int
+    page_size: int = Field(alias="pageSize")
+    total_pages: int = Field(alias="totalPages")

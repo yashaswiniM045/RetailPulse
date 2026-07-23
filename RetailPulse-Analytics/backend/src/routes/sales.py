@@ -8,13 +8,13 @@ from src.dependencies.auth import require_roles
 from src.dependencies.database import get_db
 from src.models.sale import PaymentMethod, SalesChannel
 from src.models.user import User, UserRole
-from src.schemas.sale import SaleListRead, SaleRead, SaleUpsert
+from src.schemas.sale import SaleListPageRead, SaleRead, SaleUpsert
 from src.services.sale_service import create_sale, delete_sale, get_sale, list_sales, update_sale
 
 router = APIRouter(prefix="/sales", tags=["sales"])
 
 
-@router.get("", response_model=list[SaleListRead])
+@router.get("", response_model=SaleListPageRead)
 def list_sales_route(
     search: str | None = None,
     start_date: datetime | None = Query(default=None, alias="startDate"),
@@ -24,6 +24,8 @@ def list_sales_route(
     payment_method: PaymentMethod | None = Query(default=None, alias="paymentMethod"),
     sort_by: Literal["date", "invoiceNumber", "totalAmount"] = Query(default="date", alias="sortBy"),
     sort_direction: Literal["asc", "desc"] = Query(default="desc", alias="sortDirection"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100, alias="pageSize"),
     current_user: User = Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.ANALYST)),
     db: Session = Depends(get_db),
 ):
@@ -38,6 +40,8 @@ def list_sales_route(
         payment_method=payment_method,
         sort_by=sort_by,
         sort_direction=sort_direction,
+        page=page,
+        page_size=page_size,
     )
 
 

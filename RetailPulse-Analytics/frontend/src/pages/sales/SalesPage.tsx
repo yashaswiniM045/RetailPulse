@@ -19,7 +19,7 @@ import {
 	Typography,
 } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import {
 	createSale,
@@ -79,12 +79,14 @@ export default function SalesPage() {
 	const [paymentFilter, setPaymentFilter] = useState<PaymentMethod | "all">("all");
 	const [sortBy, setSortBy] = useState<"date" | "invoiceNumber" | "totalAmount">("date");
 	const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+	const [page, setPage] = useState(1);
+	const [pageSize, setPageSize] = useState(10);
 	const [open, setOpen] = useState(false);
 	const [editingSale, setEditingSale] = useState<SaleRecord | null>(null);
 	const [viewingSaleId, setViewingSaleId] = useState<number | null>(null);
 
-	const { data: sales = [], isLoading: salesLoading } = useQuery({
-		queryKey: ["sales", search, startDate, endDate, categoryFilter, channelFilter, paymentFilter, sortBy, sortDirection],
+	const { data: salesPage, isLoading: salesLoading } = useQuery({
+		queryKey: ["sales", search, startDate, endDate, categoryFilter, channelFilter, paymentFilter, sortBy, sortDirection, page, pageSize],
 		queryFn: () =>
 			listSales({
 				search: search || undefined,
@@ -95,11 +97,19 @@ export default function SalesPage() {
 				paymentMethod: paymentFilter === "all" ? undefined : paymentFilter,
 				sortBy,
 				sortDirection,
+				page,
+				pageSize,
 			}),
 	});
+	const sales = salesPage?.items ?? [];
+	const totalSales = salesPage?.total ?? 0;
+	const totalSalePages = salesPage?.totalPages ?? 0;
 	const { data: products = [] } = useQuery({
 		queryKey: ["sales-products"],
-		queryFn: () => listProducts({ status: "active", sortBy: "name", sortDirection: "asc" }),
+		queryFn: async () => {
+			const response = await listProducts({ status: "active", sortBy: "name", sortDirection: "asc", page: 1, pageSize: 500 });
+			return response.items;
+		},
 	});
 	const { data: categories = [] } = useQuery({
 		queryKey: ["sales-categories"],
@@ -110,6 +120,10 @@ export default function SalesPage() {
 		queryFn: () => getSale(viewingSaleId ?? 0),
 		enabled: viewingSaleId !== null,
 	});
+
+	useEffect(() => {
+		setPage(1);
+	}, [search, startDate, endDate, categoryFilter, channelFilter, paymentFilter, sortBy, sortDirection]);
 
 	const productMap = useMemo(() => {
 		return products.reduce<Record<number, ProductItem>>((acc, product) => {
@@ -221,9 +235,9 @@ export default function SalesPage() {
 			</Box>
 
 			<Grid container spacing={2}>
-				<Grid size={{ xs: 12, md: 3 }}><Paper sx={{ p: 2 }}><Typography color="text.secondary">Total Orders</Typography><Typography variant="h4" fontWeight={700}>{sales.length}</Typography></Paper></Grid>
-				<Grid size={{ xs: 12, md: 3 }}><Paper sx={{ p: 2 }}><Typography color="text.secondary">Total Revenue</Typography><Typography variant="h4" fontWeight={700}>{totalRevenue.toFixed(2)}</Typography></Paper></Grid>
-				<Grid size={{ xs: 12, md: 3 }}><Paper sx={{ p: 2 }}><Typography color="text.secondary">Average Order</Typography><Typography variant="h4" fontWeight={700}>{sales.length ? (totalRevenue / sales.length).toFixed(2) : "0.00"}</Typography></Paper></Grid>
+				<Grid size={{ xs: 12, md: 3 }}><Paper sx={{ p: 2 }}><Typography color="text.secondary">Total Orders</Typography><Typography variant="h4" fontWeight={700}>{totalSales}</Typography></Paper></Grid>
+				<Grid size={{ xs: 12, md: 3 }}><Paper sx={{ p: 2 }}><Typography color="text.secondary">Revenue (Current Page)</Typography><Typography variant="h4" fontWeight={700}>{totalRevenue.toFixed(2)}</Typography></Paper></Grid>
+				<Grid size={{ xs: 12, md: 3 }}><Paper sx={{ p: 2 }}><Typography color="text.secondary">Avg Order (Current Page)</Typography><Typography variant="h4" fontWeight={700}>{sales.length ? (totalRevenue / sales.length).toFixed(2) : "0.00"}</Typography></Paper></Grid>
 				<Grid size={{ xs: 12, md: 3 }}><Paper sx={{ p: 2 }}><Typography color="text.secondary">Products In Catalog</Typography><Typography variant="h4" fontWeight={700}>{products.length}</Typography></Paper></Grid>
 			</Grid>
 
@@ -291,6 +305,31 @@ export default function SalesPage() {
 							</tbody>
 						</table>
 					</Box>
+
+					<Stack direction={{ xs: "column", md: "row" }} spacing={2} justifyContent="space-between" alignItems={{ md: "center" }}>
+						<Typography color="text.secondary">
+							Showing {totalSales === 0 ? 0 : (page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalSales)} of {totalSales}
+						</Typography>
+						<Stack direction="row" spacing={1} alignItems="center">
+							<TextField
+								select
+								size="small"
+								label="Rows"
+								value={pageSize}
+								onChange={(event) => {
+									setPageSize(Number(event.target.value));
+									setPage(1);
+								}}
+								sx={{ minWidth: 110 }}
+							>
+								{[10, 25, 50].map((size) => (
+									<MenuItem key={size} value={size}>{size}</MenuItem>
+								))}
+							</TextField>
+							<Button variant="outlined" disabled={page <= 1} onClick={() => setPage((current) => Math.max(current - 1, 1))}>Previous</Button>
+							<Button variant="outlined" disabled={totalSalePages === 0 || page >= totalSalePages} onClick={() => setPage((current) => current + 1)}>Next</Button>
+						</Stack>
+					</Stack>
 				</Stack>
 			</Paper>
 

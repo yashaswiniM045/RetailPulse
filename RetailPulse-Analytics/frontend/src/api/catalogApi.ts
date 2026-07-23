@@ -4,7 +4,16 @@ import {
 	CategoryItem,
 	CatalogStatus,
 	DashboardSummary,
+	InventoryAdjustmentPayload,
+	InventoryDashboardSummary,
+	InventoryItem,
+	InventoryMovementItem,
+	InventoryMovementType,
+	InventoryNotificationItem,
+	InventoryReorderLevelPayload,
+	InventoryStockStatus,
 	PaymentMethod,
+	PaginatedResult,
 	ProductFormValues,
 	ProductItem,
 	SaleFormValues,
@@ -120,6 +129,84 @@ function normalizeDashboard(data: Record<string, unknown>): DashboardSummary {
 	};
 }
 
+function normalizeInventoryItem(data: Record<string, unknown>): InventoryItem {
+	return {
+		id: toNumber(data.id),
+		productId: toNumber(data.productId ?? data.product_id),
+		productName: (data.productName as string | undefined) ?? (data.product_name as string) ?? "",
+		sku: (data.sku as string | undefined) ?? "",
+		category: (data.category as string | undefined) ?? "",
+		brand: (data.brand as string | null | undefined) ?? null,
+		currentStock: toNumber(data.currentStock ?? data.current_stock),
+		reservedStock: toNumber(data.reservedStock ?? data.reserved_stock),
+		availableStock: toNumber(data.availableStock ?? data.available_stock),
+		reorderLevel: toNumber(data.reorderLevel ?? data.reorder_level),
+		stockStatus: ((data.stockStatus as InventoryStockStatus | undefined) ?? (data.stock_status as InventoryStockStatus) ?? "in-stock") as InventoryStockStatus,
+		updatedAt: (data.updatedAt as string | undefined) ?? (data.updated_at as string) ?? "",
+	};
+}
+
+function normalizeInventoryMovement(data: Record<string, unknown>): InventoryMovementItem {
+	return {
+		id: toNumber(data.id),
+		inventoryId: toNumber(data.inventoryId ?? data.inventory_id),
+		productId: toNumber(data.productId ?? data.product_id),
+		productName: (data.productName as string | undefined) ?? (data.product_name as string) ?? "",
+		sku: (data.sku as string | undefined) ?? "",
+		movementType: ((data.movementType as InventoryMovementType | undefined) ?? (data.movement_type as InventoryMovementType) ?? "manual-adjustment") as InventoryMovementType,
+		previousQuantity: toNumber(data.previousQuantity ?? data.previous_quantity),
+		updatedQuantity: toNumber(data.updatedQuantity ?? data.updated_quantity),
+		quantityChanged: toNumber(data.quantityChanged ?? data.quantity_changed),
+		reason: (data.reason as string | undefined) ?? "",
+		remarks: (data.remarks as string | null | undefined) ?? null,
+		performedBy: (data.performedBy as string | null | undefined) ?? (data.performed_by as string | null | undefined) ?? null,
+		createdAt: (data.createdAt as string | undefined) ?? (data.created_at as string) ?? "",
+	};
+}
+
+function normalizeInventoryDashboard(data: Record<string, unknown>): InventoryDashboardSummary {
+	return {
+		totalProducts: toNumber(data.totalProducts ?? data.total_products),
+		totalInventoryQuantity: toNumber(data.totalInventoryQuantity ?? data.total_inventory_quantity),
+		lowStockProducts: toNumber(data.lowStockProducts ?? data.low_stock_products),
+		outOfStockProducts: toNumber(data.outOfStockProducts ?? data.out_of_stock_products),
+		inventoryByCategory: ((data.inventoryByCategory as Record<string, unknown>[] | undefined) ?? []).map((item) => ({
+			category: (item.category as string | undefined) ?? "",
+			totalQuantity: toNumber(item.totalQuantity ?? item.total_quantity),
+			productCount: toNumber(item.productCount ?? item.product_count),
+		})),
+		stockStatusDistribution: ((data.stockStatusDistribution as Record<string, unknown>[] | undefined) ?? []).map((item) => ({
+			status: ((item.status as InventoryStockStatus | undefined) ?? "in-stock") as InventoryStockStatus,
+			count: toNumber(item.count),
+		})),
+	};
+}
+
+function normalizeInventoryNotification(data: Record<string, unknown>): InventoryNotificationItem {
+	return {
+		id: toNumber(data.id),
+		productId: (data.productId as number | null | undefined) ?? (data.product_id as number | null | undefined) ?? null,
+		productName: (data.productName as string | null | undefined) ?? (data.product_name as string | null | undefined) ?? null,
+		notificationType: ((data.notificationType as InventoryNotificationItem["notificationType"] | undefined) ?? "stock-adjusted") as InventoryNotificationItem["notificationType"],
+		message: (data.message as string | undefined) ?? "",
+		createdAt: (data.createdAt as string | undefined) ?? (data.created_at as string) ?? "",
+	};
+}
+
+function normalizePaginatedResponse<T>(
+	data: Record<string, unknown>,
+	normalizer: (item: Record<string, unknown>) => T,
+): PaginatedResult<T> {
+	const items = ((data.items as Record<string, unknown>[] | undefined) ?? []).map(normalizer);
+	return {
+		items,
+		total: toNumber(data.total),
+		page: toNumber(data.page),
+		pageSize: toNumber(data.pageSize ?? data.page_size),
+		totalPages: toNumber(data.totalPages ?? data.total_pages),
+	};
+}
+
 export async function getDashboardSummary() {
 	const response = await apiClient.get<Record<string, unknown>>("/dashboard/summary");
 	return normalizeDashboard(response.data);
@@ -155,9 +242,11 @@ export async function listProducts(params: {
 	status?: CatalogStatus;
 	sortBy?: "name" | "price" | "recentlyAdded";
 	sortDirection?: "asc" | "desc";
+	page?: number;
+	pageSize?: number;
 }) {
-	const response = await apiClient.get<Record<string, unknown>[]>("/products", { params });
-	return response.data.map(normalizeProduct);
+	const response = await apiClient.get<Record<string, unknown>>("/products", { params });
+	return normalizePaginatedResponse(response.data, normalizeProduct);
 }
 
 export async function getProduct(productId: number) {
@@ -193,9 +282,11 @@ export async function listSales(params: {
 	paymentMethod?: PaymentMethod;
 	sortBy?: "date" | "invoiceNumber" | "totalAmount";
 	sortDirection?: "asc" | "desc";
+	page?: number;
+	pageSize?: number;
 }) {
-	const response = await apiClient.get<Record<string, unknown>[]>("/sales", { params });
-	return response.data.map(normalizeSaleListItem);
+	const response = await apiClient.get<Record<string, unknown>>("/sales", { params });
+	return normalizePaginatedResponse(response.data, normalizeSaleListItem);
 }
 
 export async function getSale(saleId: number) {
@@ -215,4 +306,48 @@ export async function updateSale(saleId: number, payload: SaleFormValues) {
 
 export async function deleteSale(saleId: number) {
 	await apiClient.delete(`/sales/${saleId}`);
+}
+
+export async function listInventory(params: {
+	search?: string;
+	categoryId?: number;
+	brand?: string;
+	stockStatus?: InventoryStockStatus;
+	sortBy?: "name" | "currentStock" | "recentlyUpdated";
+	sortDirection?: "asc" | "desc";
+	page?: number;
+	pageSize?: number;
+}) {
+	const response = await apiClient.get<Record<string, unknown>>("/inventory", { params });
+	return normalizePaginatedResponse(response.data, normalizeInventoryItem);
+}
+
+export async function getInventoryDashboard() {
+	const response = await apiClient.get<Record<string, unknown>>("/inventory/dashboard");
+	return normalizeInventoryDashboard(response.data);
+}
+
+export async function listInventoryMovements(params: {
+	productId?: number;
+	movementType?: InventoryMovementType;
+	page?: number;
+	pageSize?: number;
+}) {
+	const response = await apiClient.get<Record<string, unknown>>("/inventory/movements", { params });
+	return normalizePaginatedResponse(response.data, normalizeInventoryMovement);
+}
+
+export async function adjustInventoryStock(payload: InventoryAdjustmentPayload) {
+	const response = await apiClient.post<Record<string, unknown>>("/inventory/adjustments", payload);
+	return normalizeInventoryItem(response.data);
+}
+
+export async function updateInventoryReorderLevel(productId: number, payload: InventoryReorderLevelPayload) {
+	const response = await apiClient.patch<Record<string, unknown>>(`/inventory/${productId}/reorder-level`, payload);
+	return normalizeInventoryItem(response.data);
+}
+
+export async function listInventoryNotifications(limit = 20) {
+	const response = await apiClient.get<Record<string, unknown>[]>("/inventory/notifications", { params: { limit } });
+	return response.data.map(normalizeInventoryNotification);
 }

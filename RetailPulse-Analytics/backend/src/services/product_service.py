@@ -3,10 +3,13 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from src.models.category import Category
+from src.models.inventory import StockStatus
 from src.models.product import Product, ProductStatus
+from src.models.sale import SaleItem
 from src.models.user import User
 from src.schemas.product import ProductStatusUpdate, ProductUpsert
 from src.services.audit_service import AuditAction, create_audit_log
+from src.services.inventory_service import ensure_inventory_for_product
 
 
 def _product_payload(product: Product) -> dict:
@@ -79,21 +82,27 @@ def list_products(
     status_filter: ProductStatus | None = None,
     sort_by: str = "recentlyAdded",
     sort_direction: str = "desc",
-) -> list[dict]:
+    page: int = 1,
+    page_size: int = 25,
+) -> dict:
     statement = (
         select(Product)
         .options(joinedload(Product.category))
         .where(Product.company_id == company_id)
     )
+    count_statement = select(func.count(Product.id)).where(Product.company_id == company_id)
+
     if search:
         search_term = f"%{search.strip()}%"
-        statement = statement.where(
-            or_(Product.name.ilike(search_term), Product.sku.ilike(search_term), Product.brand.ilike(search_term))
-        )
+        filter_clause = or_(Product.name.ilike(search_term), Product.sku.ilike(search_term), Product.brand.ilike(search_term))
+        statement = statement.where(filter_clause)
+        count_statement = count_statement.where(filter_clause)
     if category_id:
         statement = statement.where(Product.category_id == category_id)
+        count_statement = count_statement.where(Product.category_id == category_id)
     if status_filter:
         statement = statement.where(Product.status == status_filter)
+        count_statement = count_statement.where(Product.status == status_filter)
 
     sort_desc = sort_direction.lower() != "asc"
     if sort_by == "name":
@@ -103,8 +112,18 @@ def list_products(
     else:
         statement = statement.order_by(Product.created_at.desc() if sort_desc else Product.created_at.asc())
 
-    products = db.scalars(statement).all()
-    return [_product_payload(product) for product in products]
+    total = int(db.scalar(count_statement) or 0)
+    total_pages = (total + page_size - 1) // page_size if total else 0
+    offset = (page - 1) * page_size
+
+    products = db.scalars(statement.offset(offset).limit(page_size)).all()
+    return {
+        "items": [_product_payload(product) for product in products],
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+        "totalPages": total_pages,
+    }
 
 
 def get_product(db: Session, company_id: int, product_id: int) -> dict:
@@ -137,6 +156,8 @@ def create_product(db: Session, current_user: User, payload: ProductUpsert, requ
         status=ProductStatus(payload.status),
     )
     db.add(product)
+    db.flush()
+    ensure_inventory_for_product(db, product)
     db.commit()
     product = _get_product_for_company(db, current_user.company_id, product.id)
     create_audit_log(
@@ -176,6 +197,17 @@ def update_product(db: Session, current_user: User, product_id: int, payload: Pr
     product.is_out_of_stock = payload.stock_quantity == 0
     product.unit_of_measure = payload.unit_of_measure.strip()
     product.status = ProductStatus(payload.status)
+    inventory = ensure_inventory_for_product(db, product)
+    inventory.current_stock = max(payload.stock_quantity, 0)
+    inventory.available_stock = max(inventory.current_stock - inventory.reserved_stock, 0)
+    if inventory.available_stock == 0:
+        inventory.stock_status = StockStatus.OUT_OF_STOCK
+    elif inventory.available_stock <= inventory.reorder_level:
+        inventory.stock_status = StockStatus.LOW_STOCK
+    else:
+        inventory.stock_status = StockStatus.IN_STOCK
+    product.stock_quantity = inventory.current_stock
+    product.is_out_of_stock = inventory.available_stock == 0
 
     create_audit_log(
         db,
@@ -228,6 +260,13 @@ def set_product_status(db: Session, current_user: User, product_id: int, payload
 
 def delete_product(db: Session, current_user: User, product_id: int, request: Request) -> None:
     product = _get_product_for_company(db, current_user.company_id, product_id)
+    sale_reference_count = db.scalar(select(func.count(SaleItem.id)).where(SaleItem.product_id == product.id)) or 0
+    if sale_reference_count:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Product with sales history cannot be deleted. Keep it for historical records.",
+        )
+
     create_audit_log(
         db,
         company_id=current_user.company_id,

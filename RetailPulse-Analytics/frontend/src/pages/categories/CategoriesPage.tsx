@@ -22,6 +22,7 @@ export default function CategoriesPage() {
 	const [status, setStatus] = useState<CatalogStatus | "all">("all");
 	const [open, setOpen] = useState(false);
 	const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
+	const [pendingDeleteCategory, setPendingDeleteCategory] = useState<CategoryItem | null>(null);
 
 	const { data: categories = [], isLoading } = useQuery({
 		queryKey: ["categories", search, status],
@@ -98,6 +99,21 @@ export default function CategoriesPage() {
 		setEditingCategory(null);
 	};
 
+	const closeDeleteDialog = () => {
+		setPendingDeleteCategory(null);
+	};
+
+	const confirmDeleteCategory = () => {
+		if (!pendingDeleteCategory) {
+			return;
+		}
+		deleteMutation.mutate(pendingDeleteCategory.id, {
+			onSuccess: () => {
+				closeDeleteDialog();
+			},
+		});
+	};
+
 	return (
 		<Stack spacing={3}>
 			<Box>
@@ -163,7 +179,7 @@ export default function CategoriesPage() {
 										<td style={{ padding: "14px 8px", borderBottom: "1px solid #f0e9de" }}>
 											<Stack direction="row" spacing={1}>
 												<IconButton size="small" onClick={() => openEditDialog(category)}><EditIcon fontSize="small" /></IconButton>
-												<IconButton size="small" onClick={() => deleteMutation.mutate(category.id)}><DeleteIcon fontSize="small" /></IconButton>
+												<IconButton size="small" onClick={() => setPendingDeleteCategory(category)}><DeleteIcon fontSize="small" /></IconButton>
 											</Stack>
 										</td>
 									</tr>
@@ -194,6 +210,19 @@ export default function CategoriesPage() {
 						</Button>
 					</DialogActions>
 				</form>
+			</Dialog>
+
+			<Dialog open={Boolean(pendingDeleteCategory)} onClose={closeDeleteDialog} fullWidth maxWidth="xs">
+				<DialogTitle>Delete Category</DialogTitle>
+				<DialogContent>
+					<Typography>
+						Are you sure you want to delete {pendingDeleteCategory?.name}? This action cannot be undone.
+					</Typography>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={closeDeleteDialog} color="inherit">Cancel</Button>
+					<Button color="error" variant="contained" onClick={confirmDeleteCategory} disabled={deleteMutation.isPending}>Delete</Button>
+				</DialogActions>
 			</Dialog>
 		</Stack>
 	);

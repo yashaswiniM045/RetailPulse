@@ -21,6 +21,14 @@ export interface CategoryFormValues {
 	status: CatalogStatus;
 }
 
+export interface PaginatedResult<T> {
+	items: T[];
+	total: number;
+	page: number;
+	pageSize: number;
+	totalPages: number;
+}
+
 export interface ProductItem {
 	id: number;
 	name: string;
@@ -128,4 +136,82 @@ export interface SaleListItem {
 	totalAmount: number;
 	createdByName: string;
 	itemCount: number;
+}
+
+export type InventoryStockStatus = "in-stock" | "low-stock" | "out-of-stock";
+export type InventoryMovementType = "sale" | "manual-adjustment" | "stock-addition" | "stock-removal";
+export type InventoryAdjustmentType = "stock-addition" | "stock-removal" | "manual-adjustment";
+
+export interface InventoryItem {
+	id: number;
+	productId: number;
+	productName: string;
+	sku: string;
+	category: string;
+	brand: string | null;
+	currentStock: number;
+	reservedStock: number;
+	availableStock: number;
+	reorderLevel: number;
+	stockStatus: InventoryStockStatus;
+	updatedAt: string;
+}
+
+export interface InventoryMovementItem {
+	id: number;
+	inventoryId: number;
+	productId: number;
+	productName: string;
+	sku: string;
+	movementType: InventoryMovementType;
+	previousQuantity: number;
+	updatedQuantity: number;
+	quantityChanged: number;
+	reason: string;
+	remarks: string | null;
+	performedBy: string | null;
+	createdAt: string;
+}
+
+export interface InventoryAdjustmentPayload {
+	productId: number;
+	adjustmentType: InventoryAdjustmentType;
+	quantity?: number;
+	targetQuantity?: number;
+	reason: string;
+	remarks?: string;
+}
+
+export interface InventoryReorderLevelPayload {
+	reorderLevel: number;
+	reason: string;
+}
+
+export interface InventoryCategoryBreakdown {
+	category: string;
+	totalQuantity: number;
+	productCount: number;
+}
+
+export interface InventoryStatusBreakdown {
+	status: InventoryStockStatus;
+	count: number;
+}
+
+export interface InventoryDashboardSummary {
+	totalProducts: number;
+	totalInventoryQuantity: number;
+	lowStockProducts: number;
+	outOfStockProducts: number;
+	inventoryByCategory: InventoryCategoryBreakdown[];
+	stockStatusDistribution: InventoryStatusBreakdown[];
+}
+
+export interface InventoryNotificationItem {
+	id: number;
+	productId: number | null;
+	productName: string | null;
+	notificationType: "low-stock" | "out-of-stock" | "stock-adjusted";
+	message: string;
+	createdAt: string;
 }

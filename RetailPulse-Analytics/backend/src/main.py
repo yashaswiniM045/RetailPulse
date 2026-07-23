@@ -7,11 +7,12 @@ from sqlalchemy import text
 from src.config.database import engine
 from src.config.env import get_settings
 from src.models.base import Base
-from src.models import audit_log, category, company, product, refresh_token, sale, user
+from src.models import audit_log, category, company, inventory, product, refresh_token, sale, user
 from src.routes.categories import router as categories_router
 from src.routes.dashboard import router as dashboard_router
 from src.routes.auth import router as auth_router
 from src.routes.companies import router as company_router
+from src.routes.inventory import router as inventory_router
 from src.routes.products import router as products_router
 from src.routes.sales import router as sales_router
 from src.routes.users import router as user_router
@@ -53,4 +54,5 @@ app.include_router(dashboard_router, prefix="/api")
 app.include_router(categories_router, prefix="/api")
 app.include_router(products_router, prefix="/api")
 app.include_router(sales_router, prefix="/api")
+app.include_router(inventory_router, prefix="/api")
 app.include_router(user_router, prefix="/api")

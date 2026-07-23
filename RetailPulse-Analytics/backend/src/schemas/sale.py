@@ -79,3 +79,11 @@ class SaleListRead(BaseModel):
     total_amount: float = Field(alias="totalAmount")
     created_by_name: str = Field(alias="createdByName")
     item_count: int = Field(alias="itemCount")
+
+
+class SaleListPageRead(BaseModel):
+    items: list[SaleListRead]
+    total: int
+    page: int
+    page_size: int = Field(alias="pageSize")
+    total_pages: int = Field(alias="totalPages")

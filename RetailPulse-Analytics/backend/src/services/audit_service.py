@@ -22,6 +22,12 @@ class AuditAction:
     SALE_DELETED = "Sale Deleted"
     INVENTORY_UPDATED = "Inventory Updated"
     PRODUCT_MARKED_OUT_OF_STOCK = "Product Marked Out of Stock"
+    STOCK_ADDED = "Stock Added"
+    STOCK_REMOVED = "Stock Removed"
+    STOCK_ADJUSTED = "Stock Adjusted"
+    REORDER_LEVEL_UPDATED = "Reorder Level Updated"
+    PRODUCT_REACHED_LOW_STOCK = "Product Reached Low Stock"
+    PRODUCT_BECAME_OUT_OF_STOCK = "Product Became Out of Stock"
 
 
 def create_audit_log(

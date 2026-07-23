@@ -40,3 +40,5 @@ class Product(Base):
     company = relationship("Company", back_populates="products")
     category = relationship("Category", back_populates="products")
     sale_items = relationship("SaleItem", back_populates="product")
+    inventory = relationship("Inventory", back_populates="product", uselist=False, cascade="all, delete-orphan")
+    inventory_notifications = relationship("InventoryNotification", back_populates="product", cascade="all, delete-orphan")
